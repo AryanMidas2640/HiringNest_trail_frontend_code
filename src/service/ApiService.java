@@ -4,26 +4,36 @@ import util.Session;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+//import java.io.*;
+import java.net.*;
+import java.nio.file.Files;
 
-public class ApiService {
 
-    // ======================================
+    public class ApiService {
+
+        private static final String BASE_URL = "https://personalpro-2bb3.onrender.com";
+        private static final String second_URL= "http://localhost:9090";        // ======================================
+
+
     // LOGIN (ONLY username + password)
     // ======================================
+    public static String getActiveUsers() {
+        return getRequest(second_URL +"/api/jobs/active-users");
+    }
+
+
     public static String login(
             String username,
             String password) {
 
         try {
 
-            URL url =
-                    new URL(
-                            "http://localhost:9090/api/jobs/login"
-                    );
+            URL url = new URL(
+                    second_URL +"/api/jobs/login"
+            );
 
             HttpURLConnection con =
-                    (HttpURLConnection)
-                            url.openConnection();
+                    (HttpURLConnection) url.openConnection();
 
             con.setRequestMethod("POST");
             con.setDoOutput(true);
@@ -39,14 +49,21 @@ public class ApiService {
                             + "\"password\":\"" + password + "\""
                             + "}";
 
-            OutputStream os =
-                    con.getOutputStream();
-
+            OutputStream os = con.getOutputStream();
             os.write(json.getBytes());
             os.flush();
             os.close();
 
-            return readResponse(con);
+            String response = readResponse(con);
+
+            // ========================
+            // TOKEN EXTRACT
+            // ========================
+            String token = getValue(response,"token");
+
+            Session.token = token;
+
+            return response;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -54,24 +71,49 @@ public class ApiService {
         }
     }
 
+    private static String getValue(
+            String text,
+            String key) {
+
+        try {
+
+            int start =
+                    text.indexOf("\"" + key + "\":\"");
+
+            if(start != -1){
+
+                start += key.length() + 4;
+
+                int end =
+                        text.indexOf("\"", start);
+
+                return text.substring(start,end);
+            }
+
+        } catch(Exception e){}
+
+        return "";
+    }
+
+
+
     // ======================================
     // SIGNUP (username + password + role)
     // ======================================
     public static String signup(
             String username,
             String password,
-            String role) {
+            String role,
+            String email   // 🔥 NEW ADD
+    ) {
 
         try {
 
             URL url =
-                    new URL(
-                            "http://localhost:9090/api/jobs/signing"
-                    );
+                    new URL(second_URL + "/api/jobs/signing");
 
             HttpURLConnection con =
-                    (HttpURLConnection)
-                            url.openConnection();
+                    (HttpURLConnection) url.openConnection();
 
             con.setRequestMethod("POST");
             con.setDoOutput(true);
@@ -81,16 +123,16 @@ public class ApiService {
                     "application/json"
             );
 
+            // 🔥 FIXED JSON (email added)
             String json =
                     "{"
                             + "\"username\":\"" + username + "\","
                             + "\"password\":\"" + password + "\","
-                            + "\"role\":\"" + role + "\""
+                            + "\"role\":\"" + role + "\","
+                            + "\"email\":\"" + email + "\""
                             + "}";
 
-            OutputStream os =
-                    con.getOutputStream();
-
+            OutputStream os = con.getOutputStream();
             os.write(json.getBytes());
             os.flush();
             os.close();
@@ -103,13 +145,183 @@ public class ApiService {
         }
     }
 
+    public static String uploadResume(
+            File file,
+            String skills,
+            String education
+    ) {
+
+        try {
+
+            HttpURLConnection con =
+                    (HttpURLConnection) new URL(
+                            second_URL +"/api/resume/parse"
+                    ).openConnection();
+
+            con.setRequestMethod("POST");
+            con.setDoOutput(true);
+            con.setUseCaches(false);
+
+            con.setRequestProperty(
+                    "Authorization",
+                    "Bearer " + Session.token
+            );
+
+            String boundary =
+                    "----Boundary" + System.currentTimeMillis();
+
+            con.setRequestProperty(
+                    "Content-Type",
+                    "multipart/form-data; boundary=" + boundary
+            );
+
+            con.setRequestProperty(
+                    "Accept",
+                    "application/json"
+            );
+
+            OutputStream os = con.getOutputStream();
+
+            PrintWriter writer =
+                    new PrintWriter(
+                            new OutputStreamWriter(os, "UTF-8"),
+                            true
+                    );
+
+            // ==========================
+            // skills dynamic
+            // ==========================
+            writer.append("--").append(boundary).append("\r\n");
+            writer.append(
+                    "Content-Disposition: form-data; name=\"skills\""
+            ).append("\r\n\r\n");
+
+            writer.append(skills).append("\r\n");
+            writer.flush();
+
+            // ==========================
+            // education dynamic
+            // ==========================
+            writer.append("--").append(boundary).append("\r\n");
+            writer.append(
+                    "Content-Disposition: form-data; name=\"education\""
+            ).append("\r\n\r\n");
+
+            writer.append(education).append("\r\n");
+            writer.flush();
+
+            // ==========================
+            // file
+            // ==========================
+            writer.append("--").append(boundary).append("\r\n");
+
+            writer.append(
+                    "Content-Disposition: form-data; name=\"file\"; filename=\""
+                            + file.getName() + "\""
+            ).append("\r\n");
+
+            writer.append(
+                    "Content-Type: application/pdf"
+            ).append("\r\n\r\n");
+
+            writer.flush();
+
+            Files.copy(file.toPath(), os);
+            os.flush();
+
+            writer.append("\r\n");
+
+            writer.append("--")
+                    .append(boundary)
+                    .append("--")
+                    .append("\r\n");
+
+            writer.flush();
+            writer.close();
+
+            int code = con.getResponseCode();
+
+            InputStream is =
+                    (code >= 400)
+                            ? con.getErrorStream()
+                            : con.getInputStream();
+
+            if (is == null) {
+                return "HTTP ERROR : " + code;
+            }
+
+            BufferedReader br =
+                    new BufferedReader(
+                            new InputStreamReader(is)
+                    );
+
+            String line;
+            StringBuilder response =
+                    new StringBuilder();
+
+            while ((line = br.readLine()) != null) {
+                response.append(line);
+            }
+
+            br.close();
+
+            return response.toString();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "ERROR";
+        }
+    }
+
+    public static String logout() {
+
+        try {
+
+            URL url = new URL(second_URL + "/api/jobs/logout");
+
+            HttpURLConnection con =
+                    (HttpURLConnection) url.openConnection();
+
+            con.setRequestMethod("POST");
+
+            con.setRequestProperty(
+                    "Authorization",
+                    "Bearer " + Session.token
+            );
+
+            con.setDoOutput(true);
+
+            BufferedReader br =
+                    new BufferedReader(
+                            new InputStreamReader(
+                                    con.getInputStream()
+                            )
+                    );
+
+            String line;
+            StringBuilder sb = new StringBuilder();
+
+            while((line = br.readLine()) != null){
+                sb.append(line);
+            }
+
+            br.close();
+
+            return sb.toString();
+
+        } catch(Exception e){
+            return "ERROR";
+        }
+    }
+
+
     // ======================================
     // GET ALL JOBS
     // ======================================
     public static String getAllJobs() {
 
         return getRequest(
-                "http://localhost:9090/api/jobs/all"
+                second_URL +"/api/jobs/all"
         );
     }
 
@@ -120,7 +332,7 @@ public class ApiService {
             String tenantId) {
 
         return getRequest(
-                "http://localhost:9090/api/jobs/tenant/"
+                second_URL +"/api/jobs/tenant/"
                         + tenantId
         );
     }
@@ -131,7 +343,7 @@ public class ApiService {
     public static String myPostedJobs() {
 
         return getRequest(
-                "http://localhost:9090/api/jobs/tenant/"
+                second_URL +"/api/jobs/tenant/"
                         + Session.tenantId
         );
     }
@@ -143,7 +355,7 @@ public class ApiService {
             String jobId) {
 
         return getRequest(
-                "http://localhost:9090/api/jobs/"
+                second_URL +"/api/jobs/"
                         + jobId
         );
     }
@@ -151,20 +363,18 @@ public class ApiService {
     // ======================================
     // APPLY JOB
     // ======================================
-    public static String applyJob(
-            String jobId) {
+    public static String applyJob(String jobId, String status) {
 
         try {
 
-            URL url =
-                    new URL(
-                            "http://localhost:9090/api/jobs/apply/"
-                                    + jobId
-                    );
+            URL url = new URL(
+                    second_URL +"/api/jobs/apply/"
+                            + jobId + "/" + status
+            );
+
 
             HttpURLConnection con =
-                    (HttpURLConnection)
-                            url.openConnection();
+                    (HttpURLConnection) url.openConnection();
 
             con.setRequestMethod("POST");
 
@@ -180,14 +390,13 @@ public class ApiService {
             return "ERROR APPLYING";
         }
     }
-
     // ======================================
     // MY APPLIED JOBS
     // ======================================
     public static String myAppliedJobs() {
 
         return getRequest(
-                "http://localhost:9090/api/jobs/my-applied"
+                second_URL +"/api/jobs/my-applied"
         );
     }
 
@@ -197,7 +406,7 @@ public class ApiService {
     public static String myApplicants() {
 
         return getRequest(
-                "http://localhost:9090/api/jobs/my-applicants"
+                second_URL +"/api/jobs/my-applicants"
         );
     }
 
@@ -219,7 +428,7 @@ public class ApiService {
 
             URL url =
                     new URL(
-                            "http://localhost:9090/api/jobs/add"
+                            second_URL +"/api/jobs/add"
                     );
 
             HttpURLConnection con =
@@ -297,6 +506,14 @@ public class ApiService {
         }
     }
 
+
+
+        public static String getOnlineUsersCount() {
+            return getRequest(
+                    second_URL + "/api/jobs/admin/online-users/count"
+            );
+        }
+
     // ======================================
     // RESPONSE READER
     // ======================================
@@ -339,4 +556,38 @@ public class ApiService {
 
         return response.toString();
     }
+        public static String getAllRecruiters() {
+            return getRequest(second_URL + "/api/admin/recruiters");
+        }
+
+        public static String getStudentCount() {
+            return getRequest(
+                    second_URL + "/api/admin/student-count"
+            );
+        }
+
+        public static String getRecruiterCount() {
+            return getRequest(
+                    second_URL + "/api/admin/recruiter-count"
+            );
+        }
+
+        public static String getJobCount() {
+            return getRequest(
+                    second_URL + "/api/admin/job-count"
+            );
+        }
+
+        public static String getApplicationCount() {
+            return getRequest(
+                    second_URL + "/api/admin/application-count"
+            );
+        }
+
+        public static String getAllStudents() {
+            return getRequest(
+                    second_URL + "/api/admin/students"
+            );
+        }
+
 }

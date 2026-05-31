@@ -10,11 +10,12 @@ public class SignupFrame extends JFrame {
     JTextField txtUser;
     JPasswordField txtPass;
     JComboBox<String> roleBox;
+    JTextField txtEmail;   // 🔥 NEW FIELD
 
     public SignupFrame() {
 
         setTitle("Signup");
-        setSize(500,420);
+        setSize(500,460); // 🔥 increased height
         setLocationRelativeTo(null);
         setLayout(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -27,39 +28,54 @@ public class SignupFrame extends JFrame {
         head.setFont(new Font("Segoe UI",Font.BOLD,28));
         add(head);
 
+        // ================= USERNAME =================
         JLabel l1 = new JLabel("Username");
-        l1.setBounds(60,90,120,20);
+        l1.setBounds(60,80,120,20);
         l1.setForeground(Color.WHITE);
         add(l1);
 
         txtUser = new JTextField();
-        txtUser.setBounds(60,115,350,35);
+        txtUser.setBounds(60,105,350,35);
         add(txtUser);
 
+        // ================= EMAIL (NEW 🔥) =================
+        JLabel lEmail = new JLabel("Email");
+        lEmail.setBounds(60,145,120,20);
+        lEmail.setForeground(Color.WHITE);
+        add(lEmail);
+
+        txtEmail = new JTextField();
+        txtEmail.setBounds(60,170,350,35);
+        add(txtEmail);
+
+        // ================= PASSWORD =================
         JLabel l2 = new JLabel("Password");
-        l2.setBounds(60,165,120,20);
+        l2.setBounds(60,215,120,20);
         l2.setForeground(Color.WHITE);
         add(l2);
 
         txtPass = new JPasswordField();
-        txtPass.setBounds(60,190,350,35);
+        txtPass.setBounds(60,240,350,35);
         add(txtPass);
 
+        // ================= ROLE =================
         JLabel l3 = new JLabel("Role");
-        l3.setBounds(60,240,120,20);
+        l3.setBounds(60,285,120,20);
         l3.setForeground(Color.WHITE);
         add(l3);
 
         roleBox = new JComboBox<>(new String[]{
                 "STUDENT",
-                "RECRUITER"
+                "RECRUITER",
+                "ADMIN"
         });
 
-        roleBox.setBounds(60,265,350,35);
+        roleBox.setBounds(60,310,350,35);
         add(roleBox);
 
+        // ================= BUTTON =================
         JButton btn = new JButton("Signup");
-        btn.setBounds(60,320,350,40);
+        btn.setBounds(60,360,350,40);
         btn.setBackground(new Color(0,140,255));
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
@@ -72,43 +88,41 @@ public class SignupFrame extends JFrame {
 
     private void doSignup() {
 
-        String username =
-                txtUser.getText().trim();
+        String username = txtUser.getText().trim();
+        String password = String.valueOf(txtPass.getPassword()).trim();
+        String role = roleBox.getSelectedItem().toString();
+        String email = txtEmail.getText().trim();   // 🔥 NEW
 
-        String password =
-                String.valueOf(
-                        txtPass.getPassword()
-                ).trim();
+        // ================= VALIDATION =================
+        if(username.isEmpty() || password.isEmpty() || email.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "All fields required ❌");
+            return;
+        }
 
-        String role =
-                roleBox.getSelectedItem()
-                        .toString();
+        if(!email.contains("@")) {
+            JOptionPane.showMessageDialog(this, "Invalid email ❌");
+            return;
+        }
 
+        // ================= API CALL =================
         String response =
                 ApiService.signup(
                         username,
                         password,
-                        role
+                        role,
+                        email   // 🔥 IMPORTANT FIX
                 );
 
-        // SHORT CLEAN POPUP
         if(response.contains("\"success\":true")
                 || response.toLowerCase().contains("success")){
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Signup Successful ✅"
-            );
+            JOptionPane.showMessageDialog(this, "Signup Successful ✅");
 
             dispose();
             new LoginFrame();
 
-        }else{
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Signup Failed ❌"
-            );
+        } else {
+            JOptionPane.showMessageDialog(this, "Signup Failed ❌");
         }
     }
 }
