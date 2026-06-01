@@ -22,54 +22,59 @@ import java.nio.file.Files;
     }
 
 
-    public static String login(
-            String username,
-            String password) {
+        public static String login(String username, String password) {
 
-        try {
+            try {
+                URL url = new URL(second_URL + "/api/jobs/login");
 
-            URL url = new URL(
-                    second_URL +"/api/jobs/login"
-            );
+                HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("POST");
+                con.setDoOutput(true);
+                con.setRequestProperty("Content-Type", "application/json");
 
-            HttpURLConnection con =
-                    (HttpURLConnection) url.openConnection();
+                String json =
+                        "{\"username\":\"" + username + "\","
+                                + "\"password\":\"" + password + "\"}";
 
-            con.setRequestMethod("POST");
-            con.setDoOutput(true);
+                OutputStream os = con.getOutputStream();
+                os.write(json.getBytes());
+                os.flush();
+                os.close();
 
-            con.setRequestProperty(
-                    "Content-Type",
-                    "application/json"
-            );
+                String response = readResponse(con);
 
-            String json =
-                    "{"
-                            + "\"username\":\"" + username + "\","
-                            + "\"password\":\"" + password + "\""
-                            + "}";
+                System.out.println("LOGIN RESPONSE = " + response);
 
-            OutputStream os = con.getOutputStream();
-            os.write(json.getBytes());
-            os.flush();
-            os.close();
+                // FORCE CLEAN TOKEN EXTRACTION
+                String token = extract(response, "token");
 
-            String response = readResponse(con);
+                System.out.println("EXTRACTED TOKEN = " + token);
 
-            // ========================
-            // TOKEN EXTRACT
-            // ========================
-            String token = getValue(response,"token");
+                Session.token = token;
 
-            Session.token = token;
+                return response;
 
-            return response;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "ERROR LOGIN";
+            } catch (Exception e) {
+                e.printStackTrace();
+                return "ERROR";
+            }
         }
-    }
+        private static String extract(String json, String key) {
+            try {
+                String pattern = "\"" + key + "\":\"";
+                int start = json.indexOf(pattern);
+
+                if (start == -1) return "";
+
+                start += pattern.length();
+                int end = json.indexOf("\"", start);
+
+                return json.substring(start, end);
+
+            } catch (Exception e) {
+                return "";
+            }
+        }
 
     private static String getValue(
             String text,
@@ -320,9 +325,9 @@ import java.nio.file.Files;
     // ======================================
     public static String getAllJobs() {
 
-        return getRequest(
-                second_URL +"/api/jobs/all"
-        );
+       // System.out.println("URL = " + urlPath);
+        System.out.println("TOKEN SENT = " + Session.token);
+        return getRequest(second_URL + "/api/jobs/all");
     }
 
     // ======================================
@@ -479,24 +484,29 @@ import java.nio.file.Files;
     // ======================================
     // COMMON GET METHOD
     // ======================================
-    private static String getRequest(
-            String urlPath) {
+    private static String getRequest(String urlPath) {
 
+        System.out.println("URL = " + urlPath);
+        System.out.println("TOKEN SENT = " + Session.token);
         try {
 
-            URL url =
-                    new URL(urlPath);
-
-            HttpURLConnection con =
-                    (HttpURLConnection)
-                            url.openConnection();
+            URL url = new URL(urlPath);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
             con.setRequestMethod("GET");
 
-            con.setRequestProperty(
-                    "Authorization",
-                    "Bearer " + Session.token
-            );
+            if (Session.token == null || Session.token.isEmpty()) {
+                System.out.println("❌ NO TOKEN");
+                return "NO TOKEN";
+            }
+
+            String token = Session.token;
+
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            con.setRequestProperty("Authorization", "Bearer " + token);
 
             return readResponse(con);
 
@@ -557,6 +567,7 @@ import java.nio.file.Files;
         return response.toString();
     }
         public static String getAllRecruiters() {
+            System.out.println(ApiService.getAllJobs());
             return getRequest(second_URL + "/api/admin/recruiters");
         }
 
@@ -589,5 +600,6 @@ import java.nio.file.Files;
                     second_URL + "/api/admin/students"
             );
         }
+        //System.out.println("TOKEN = " + Session.token);
 
 }

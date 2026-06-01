@@ -1,14 +1,18 @@
 package ui;
 
 import service.ApiService;
-
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+import javax.swing.RowFilter;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.table.DefaultTableModel;
+//import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
 //import org.json.JSONArray;
 //import org.json.JSONObject;
+import javax.swing.JPanel;
+import java.awt.BorderLayout;
 
 public class AdminDashboard extends JFrame {
 
@@ -82,6 +86,8 @@ public class AdminDashboard extends JFrame {
 
         JButton logoutBtn = createSidebarButton("Logout", "logouts");
 
+        recruitersBtn.addActionListener(e -> openRecruiters());
+
         sidebar.add(dashboardBtn);
         sidebar.add(studentsBtn);
         sidebar.add(recruitersBtn);
@@ -92,79 +98,167 @@ public class AdminDashboard extends JFrame {
         sidebar.add(settingsBtn);
         sidebar.add(logoutBtn);
 
-       // String response = ApiService.getAllStudents();
+        jobsBtn.addActionListener(e -> openJobs());
+/*
+        jobsBtn.addActionListener(e -> {
 
-        recruitersBtn.addActionListener(e -> {
+            String response = ApiService.getAllJobs();
 
-            String response = ApiService.getAllRecruiters();
-
-            JFrame frame = new JFrame("Recruiters List");
-            frame.setSize(950, 550);
+            JFrame frame = new JFrame("Jobs Control Center");
+            frame.setSize(1250, 750);
             frame.setLocationRelativeTo(null);
+            frame.setLayout(new BorderLayout());
+            frame.getContentPane().setBackground(new Color(8, 12, 25));
 
+            // ================= HEADER =================
+            JPanel header1 = new JPanel(new BorderLayout());
+            header1.setBackground(new Color(15, 20, 40));
+            header1.setBorder(BorderFactory.createEmptyBorder(20, 30, 10, 30));
+
+            JLabel title = new JLabel("💼 Jobs Control Center");
+            title.setForeground(Color.WHITE);
+            title.setFont(new Font("Segoe UI", Font.BOLD, 30));
+
+            header.add(title, BorderLayout.WEST);
+
+            // ================= MODEL =================
             String[] columns = {
-                    "Company",
-                    "Username",
-                    "Email",
-                    "Tenant ID",
-                    "Status"
+                    "Job ID", "Title", "Company", "City",
+                    "Type", "Mode", "Experience", "Salary", "Email"
             };
 
             DefaultTableModel model = new DefaultTableModel(columns, 0);
 
+            int total = 0;
+
             try {
 
-                String[] items = response.split("\\{");
+                if (response != null && !response.isEmpty()) {
 
-                for(String item : items){
+                    response = response.trim();
 
-                    if(!item.contains("username")) continue;
+                    if (response.startsWith("[")) response = response.substring(1);
+                    if (response.endsWith("]")) response = response.substring(0, response.length() - 1);
 
-                    String company = getValue(item, "companyName");
-                    String username = getValue(item, "username");
-                    String email = getValue(item, "email");
-                    String tenantId = getValue(item, "tenantId");
-                    String online = getValue(item, "online");
+                    String[] items = response.split("\\},\\s*\\{");
 
-                    model.addRow(new Object[]{
-                            company,
-                            username,
-                            email,
-                            tenantId,
-                            online
-                    });
+                    for (String item : items) {
+
+                        item = item.replace("{", "").replace("}", "");
+
+                        String jobId = getValue(item, "jobId");
+                        if (jobId == null || jobId.isEmpty()) continue;
+
+                        String titleJob = getValue(item, "jobTitle");
+                        String company = getValue(item, "companyName");
+                        String city = getValue(item, "city");
+                        String jobType = getValue(item, "jobType");
+                        String workMode = getValue(item, "workMode");
+                        String salary = getValue(item, "salary");
+                        String email = getValue(item, "email");
+
+                        String minExp = getValue(item, "minExperience");
+                        String maxExp = getValue(item, "maxExperience");
+
+                        String exp = minExp + " - " + maxExp + " yrs";
+
+                        model.addRow(new Object[]{
+                                jobId, titleJob, company, city,
+                                jobType, workMode, exp, salary, email
+                        });
+
+                        total++;
+                    }
                 }
 
-            } catch(Exception ex){
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
 
-            JTable table = new JTable(model);
+            // ================= KPI =================
+            JPanel kpi = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 5));
+            kpi.setBackground(new Color(15, 20, 40));
 
-            // ================= PREMIUM UI =================
-            table.setRowHeight(40);
+            kpi.add(createMiniCard("Total Jobs", String.valueOf(total), new Color(99,102,241)));
+
+            header.add(kpi, BorderLayout.SOUTH);
+
+            // ================= TABLE =================
+            JTable table = new JTable(model) {
+
+                public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
+
+                    Component c = super.prepareRenderer(r, row, col);
+
+                    if (!isRowSelected(row)) {
+                        c.setBackground(row % 2 == 0
+                                ? new Color(18, 24, 40)
+                                : new Color(22, 30, 50));
+                    } else {
+                        c.setBackground(new Color(59, 130, 246));
+                    }
+
+                    c.setForeground(Color.WHITE);
+                    return c;
+                }
+            };
+
+            table.setRowHeight(46);
             table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
             table.setShowGrid(false);
-            table.setIntercellSpacing(new Dimension(0,0));
+            table.setIntercellSpacing(new Dimension(0, 0));
 
-            table.getTableHeader().setFont(
-                    new Font("Segoe UI", Font.BOLD, 14)
-            );
+            table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+            table.getTableHeader().setBackground(new Color(15, 20, 40));
+            table.getTableHeader().setForeground(new Color(148, 163, 184));
 
-            table.setSelectionBackground(new Color(59,130,246));
+            table.setSelectionBackground(new Color(59, 130, 246));
             table.setSelectionForeground(Color.WHITE);
 
-            JScrollPane pane = new JScrollPane(table);
+            // ================= SEARCH =================
+            JTextField search = new JTextField();
+            search.setPreferredSize(new Dimension(360, 38));
+            search.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            search.setBackground(new Color(18, 24, 40));
+            search.setForeground(Color.WHITE);
+            search.setCaretColor(Color.WHITE);
+            search.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
 
-            frame.add(pane);
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+            table.setRowSorter(sorter);
+
+            search.addKeyListener(new java.awt.event.KeyAdapter() {
+                public void keyReleased(java.awt.event.KeyEvent e) {
+                    sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search.getText()));
+                }
+            });
+
+            JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            searchPanel.setBackground(new Color(8, 12, 25));
+            searchPanel.add(search);
+
+            // ================= WRAPPER =================
+            JPanel wrapper = new JPanel(new BorderLayout());
+            wrapper.setBackground(new Color(8, 12, 25));
+            wrapper.setBorder(BorderFactory.createEmptyBorder(20, 30, 30, 30));
+
+            JScrollPane scroll = new JScrollPane(table);
+            scroll.setBorder(BorderFactory.createEmptyBorder());
+            scroll.getViewport().setBackground(new Color(8, 12, 25));
+
+            wrapper.add(searchPanel, BorderLayout.NORTH);
+            wrapper.add(scroll, BorderLayout.CENTER);
+
+            // ================= FINAL =================
+            frame.add(header, BorderLayout.NORTH);
+            frame.add(wrapper, BorderLayout.CENTER);
+
             frame.setVisible(true);
         });
 
+ */
 
-
-
-
-
+       // String response = ApiService.getAllStudents();
 
 
 
@@ -442,6 +536,176 @@ public class AdminDashboard extends JFrame {
 
         setVisible(true);
     }
+    private void openJobs() {
+
+        String response = ApiService.getAllJobs();
+
+        JFrame frame = new JFrame("Jobs Control Center");
+        frame.setSize(1300, 850);
+        frame.setLocationRelativeTo(null);
+        frame.setLayout(new BorderLayout());
+        frame.getContentPane().setBackground(new Color(248, 250, 252));
+
+        // ================= HEADER =================
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(Color.WHITE);
+        header.setBorder(BorderFactory.createEmptyBorder(22, 35, 15, 35));
+
+        JLabel title = new JLabel("💼 Jobs Control Center");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 34));
+        title.setForeground(new Color(15, 23, 42));
+
+        JLabel subtitle = new JLabel("Manage all job postings in one unified SaaS dashboard");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        subtitle.setForeground(new Color(100, 116, 139));
+
+        JPanel titleBox = new JPanel(new GridLayout(2, 1));
+        titleBox.setBackground(Color.WHITE);
+        titleBox.add(title);
+        titleBox.add(subtitle);
+
+        header.add(titleBox, BorderLayout.WEST);
+
+        // ================= MODEL =================
+        String[] columns = {
+                "Job ID", "Title", "Company", "City",
+                "Type", "Mode", "Experience", "Salary", "Email"
+        };
+
+        DefaultTableModel model = new DefaultTableModel(columns, 0);
+        int total = 0;
+
+        try {
+            if (response != null && !response.isEmpty()) {
+
+                response = response.trim();
+                if (response.startsWith("[")) response = response.substring(1);
+                if (response.endsWith("]")) response = response.substring(0, response.length() - 1);
+
+                String[] items = response.split("\\},\\s*\\{");
+
+                for (String item : items) {
+
+                    item = item.replace("{", "").replace("}", "");
+
+                    String jobId = getValue(item, "jobId");
+                    if (jobId == null || jobId.isEmpty()) continue;
+
+                    String titleJob = getValue(item, "jobTitle");
+                    String company = getValue(item, "companyName");
+                    String city = getValue(item, "city");
+                    String jobType = getValue(item, "jobType");
+                    String workMode = getValue(item, "workMode");
+                    String salary = getValue(item, "salary");
+                    String email = getValue(item, "email");
+
+                    String exp = getValue(item, "minExperience") + " - " +
+                            getValue(item, "maxExperience") + " yrs";
+
+                    model.addRow(new Object[]{
+                            jobId, titleJob, company, city,
+                            jobType, workMode, exp, salary, email
+                    });
+
+                    total++;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // ================= KPI CARDS =================
+        // ================= KPI CARDS FIX =================
+        JPanel kpi = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 10));
+        kpi.setBackground(new Color(248, 250, 252)); // light page background
+
+        kpi.add(createMiniCard("Total Jobs", String.valueOf(total), new Color(59,130,246)));
+        kpi.add(createMiniCard("Active", String.valueOf(total), new Color(34,197,94)));
+        kpi.add(createMiniCard("Draft", "0", new Color(245,158,11)));
+
+        header.add(kpi, BorderLayout.SOUTH);
+
+        // ================= TABLE =================
+        JTable table = new JTable(model) {
+
+            public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
+
+                Component c = super.prepareRenderer(r, row, col);
+
+                if (!isRowSelected(row)) {
+                    c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
+                } else {
+                    c.setBackground(new Color(219, 234, 254));
+                }
+
+                c.setForeground(new Color(15, 23, 42));
+
+                if (c instanceof JComponent jc) {
+                    jc.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+                }
+
+                return c;
+            }
+        };
+
+        table.setRowHeight(52);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        table.setShowGrid(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
+
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        table.getTableHeader().setBackground(new Color(15, 23, 42));
+        table.getTableHeader().setForeground(Color.WHITE);
+
+        table.setSelectionBackground(new Color(191, 219, 254));
+        table.setSelectionForeground(new Color(15, 23, 42));
+
+        table.setAutoCreateRowSorter(true);
+
+        // ================= SEARCH BAR =================
+        JTextField search = new JTextField();
+        search.setPreferredSize(new Dimension(450, 44));
+        search.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        search.setBackground(Color.WHITE);
+        search.setForeground(new Color(15, 23, 42));
+        search.setCaretColor(new Color(59,130,246));
+        search.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226,232,240)),
+                BorderFactory.createEmptyBorder(10, 14, 10, 14)
+        ));
+
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        table.setRowSorter(sorter);
+
+        search.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search.getText()));
+            }
+        });
+
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        searchPanel.setBackground(new Color(248, 250, 252));
+        searchPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        searchPanel.add(search);
+
+        // ================= WRAPPER =================
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(new Color(248, 250, 252));
+        wrapper.setBorder(BorderFactory.createEmptyBorder(20, 35, 30, 35));
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(226,232,240)));
+        scroll.getViewport().setBackground(Color.WHITE);
+
+        wrapper.add(searchPanel, BorderLayout.NORTH);
+        wrapper.add(scroll, BorderLayout.CENTER);
+
+        // ================= FINAL =================
+        frame.add(header, BorderLayout.NORTH);
+        frame.add(wrapper, BorderLayout.CENTER);
+
+        frame.setVisible(true);
+    }
 
     private void initCenter() {
     }
@@ -591,6 +855,191 @@ public class AdminDashboard extends JFrame {
 
         return button;
     }
+    private void openRecruiters() {
+
+        String response = ApiService.getAllRecruiters();
+
+        JFrame frame = new JFrame("Recruiters Dashboard");
+        frame.setSize(1250, 780);
+        frame.setLocationRelativeTo(null);
+        frame.setLayout(new BorderLayout());
+        frame.getContentPane().setBackground(new Color(8, 10, 20));
+
+        // ================= HEADER (GLASS STYLE) =================
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(12, 16, 32));
+        header.setBorder(BorderFactory.createEmptyBorder(25, 30, 15, 30));
+
+        JLabel title = new JLabel("🏢 Recruiters Control Center");
+        title.setForeground(Color.WHITE);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 32));
+
+        header.add(title, BorderLayout.WEST);
+
+        // ================= MODEL =================
+        String[] columns = {"Company", "Username", "Email", "Tenant ID", "Status"};
+        DefaultTableModel model = new DefaultTableModel(columns, 0);
+
+        int onlineCount = 0;
+
+        try {
+            if (response != null && !response.isEmpty()) {
+
+                String[] items = response.split("\\{");
+
+                for (String item : items) {
+
+                    if (!item.contains("username")) continue;
+
+                    String company = getValue(item, "companyName");
+                    if (company == null || company.isEmpty()) company = "N/A";
+
+                    String username = getValue(item, "username");
+                    String email = getValue(item, "email");
+                    String tenantId = getValue(item, "tenantId");
+                    String online = getValue(item, "online");
+
+                    if ("true".equalsIgnoreCase(online)) onlineCount++;
+
+                    model.addRow(new Object[]{
+                            company, username, email, tenantId, online
+                    });
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        int total = model.getRowCount();
+
+        // ================= KPI SECTION =================
+        JPanel kpi = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 10));
+        kpi.setBackground(new Color(12, 16, 32));
+
+        kpi.add(createMiniCard("TOTAL", String.valueOf(total), new Color(99,102,241)));
+        kpi.add(createMiniCard("ONLINE", String.valueOf(onlineCount), new Color(34,197,94)));
+        kpi.add(createMiniCard("OFFLINE", String.valueOf(total - onlineCount), new Color(239,68,68)));
+
+        header.add(kpi, BorderLayout.SOUTH);
+
+        // ================= TABLE =================
+        JTable table = new JTable(model) {
+
+            public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
+
+                Component c = super.prepareRenderer(r, row, col);
+
+                if (!isRowSelected(row)) {
+                    c.setBackground(row % 2 == 0
+                            ? new Color(17, 22, 40)
+                            : new Color(20, 26, 48));
+                } else {
+                    c.setBackground(new Color(59, 130, 246));
+                }
+
+                c.setForeground(Color.WHITE);
+                return c;
+            }
+        };
+
+        table.setRowHeight(50);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        table.setShowGrid(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
+
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        table.getTableHeader().setBackground(new Color(12, 16, 32));
+        table.getTableHeader().setForeground(new Color(148, 163, 184));
+
+        table.setSelectionBackground(new Color(59, 130, 246));
+        table.setSelectionForeground(Color.WHITE);
+
+        // ================= STATUS PILL =================
+        table.getColumnModel().getColumn(4).setCellRenderer((t, value, isSelected, hasFocus, row, col) -> {
+
+            boolean online = "true".equalsIgnoreCase(String.valueOf(value));
+
+            JLabel label = new JLabel(online ? "● ONLINE" : "● OFFLINE");
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setOpaque(true);
+            label.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            label.setForeground(Color.WHITE);
+            label.setBorder(BorderFactory.createEmptyBorder(5, 12, 5, 12));
+
+            if (online) label.setBackground(new Color(34, 197, 94));
+            else label.setBackground(new Color(239, 68, 68));
+
+            return label;
+        });
+
+        // ================= SEARCH BAR (MODERN PILL) =================
+        JTextField search = new JTextField();
+        search.setPreferredSize(new Dimension(380, 40));
+        search.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        search.setBackground(new Color(17, 22, 40));
+        search.setForeground(Color.WHITE);
+        search.setCaretColor(Color.WHITE);
+        search.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        table.setRowSorter(sorter);
+
+        search.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search.getText()));
+            }
+        });
+
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        searchPanel.setBackground(new Color(8, 10, 20));
+        searchPanel.add(search);
+
+        // ================= TABLE WRAPPER (CARD EFFECT) =================
+        JPanel tableWrapper = new JPanel(new BorderLayout());
+        tableWrapper.setBackground(new Color(12, 16, 32));
+        tableWrapper.setBorder(BorderFactory.createEmptyBorder(20, 30, 30, 30));
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(new Color(12, 16, 32));
+
+        tableWrapper.add(searchPanel, BorderLayout.NORTH);
+        tableWrapper.add(scroll, BorderLayout.CENTER);
+
+        // ================= FINAL =================
+        frame.add(header, BorderLayout.NORTH);
+        frame.add(tableWrapper, BorderLayout.CENTER);
+
+        frame.setVisible(true);
+    }
+    private JPanel createMiniCard(String title, String value, Color color) {
+
+        JPanel card = new JPanel(new BorderLayout());
+        card.setPreferredSize(new Dimension(160, 70));
+
+        // ❌ REMOVE DARK BACKGROUND
+        card.setBackground(Color.WHITE);
+
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)
+        ));
+
+        JLabel t = new JLabel(title);
+        t.setForeground(new Color(100, 116, 139));
+        t.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+        JLabel v = new JLabel(value);
+        v.setForeground(color);
+        v.setFont(new Font("Segoe UI", Font.BOLD, 20));
+
+        card.add(t, BorderLayout.NORTH);
+        card.add(v, BorderLayout.CENTER);
+
+        return card;
+    }
+
+
 
 
     public static void main(String[] args) {
