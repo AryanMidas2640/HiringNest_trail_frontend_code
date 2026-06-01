@@ -272,8 +272,10 @@ public class AdminDashboard extends JFrame {
             System.out.println(response);
 
             JFrame frame = new JFrame("Students List");
-            frame.setSize(900, 500);
+            frame.setSize(1050, 650);
             frame.setLocationRelativeTo(null);
+            frame.setLayout(new BorderLayout(12, 12));
+            frame.getContentPane().setBackground(new Color(241, 245, 249));
 
             String[] columns = {
                     "Username",
@@ -318,39 +320,44 @@ public class AdminDashboard extends JFrame {
                 ex.printStackTrace();
             }
 
-            JTable table = new JTable(model){
+            JTable table = new JTable(model) {
 
                 @Override
                 public Component prepareRenderer(
                         javax.swing.table.TableCellRenderer renderer,
                         int row,
-                        int column){
+                        int column) {
 
-                    Component c =
-                            super.prepareRenderer(
-                                    renderer,row,column);
+                    Component c = super.prepareRenderer(renderer, row, column);
 
-                    if(!isRowSelected(row)){
+                    if (!isRowSelected(row)) {
 
-                        if(row % 2 == 0){
+                        if (row % 2 == 0) {
                             c.setBackground(Color.WHITE);
-                        }else{
-                            c.setBackground(
-                                    new Color(245,248,252)
-                            );
+                        } else {
+                            c.setBackground(new Color(248, 250, 252)); // soft SaaS gray-blue
                         }
+
+                    } else {
+                        c.setBackground(new Color(219, 234, 254)); // selection glow
+                    }
+
+                    c.setForeground(new Color(15, 23, 42));
+
+                    if (c instanceof JComponent jc) {
+                        jc.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
                     }
 
                     return c;
                 }
             };
 
-            table.setRowHeight(38);
-            table.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+            table.setRowHeight(44);
+            table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
-            table.getTableHeader().setFont(
-                    new Font("Segoe UI", Font.BOLD, 16)
-            );
+            table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+            table.getTableHeader().setBackground(new Color(15, 23, 42));
+            table.getTableHeader().setForeground(Color.WHITE);
 
             table.getTableHeader().setBackground(
                     new Color(59,130,246)
@@ -360,9 +367,11 @@ public class AdminDashboard extends JFrame {
                     Color.WHITE
             );
 
-            table.setSelectionBackground(
-                    new Color(220,235,255)
-            );
+            table.setSelectionBackground(new Color(191, 219, 254));
+            table.setSelectionForeground(new Color(15, 23, 42));
+
+            table.setShowGrid(false);
+            table.setIntercellSpacing(new Dimension(0, 0));
 
             table.setAutoCreateRowSorter(true);
 
@@ -382,9 +391,17 @@ public class AdminDashboard extends JFrame {
 
 // SEARCH BOX
             JTextField searchField = new JTextField();
-            searchField.setFont(
-                    new Font("Segoe UI", Font.PLAIN, 15)
-            );
+            searchField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+
+            searchField.setPreferredSize(new Dimension(300, 38));
+            searchField.setBackground(Color.WHITE);
+            searchField.setForeground(new Color(15, 23, 42));
+            searchField.setCaretColor(new Color(59, 130, 246));
+
+            searchField.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
 
             javax.swing.table.TableRowSorter<DefaultTableModel>
                     sorter =
@@ -407,50 +424,33 @@ public class AdminDashboard extends JFrame {
             );
 
 // TOP PANEL
-            JPanel topPanel =
-                    new JPanel(new BorderLayout());
+            JPanel topPanel = new JPanel(new BorderLayout());
+            topPanel.setBackground(Color.WHITE);
+            topPanel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)),
+                    BorderFactory.createEmptyBorder(18, 25, 18, 25)
+            ));
 
-            JLabel title =
-                    new JLabel(
-                            "🎓 Students Management"
-                    );
+            JLabel title = new JLabel("🎓 Students Management");
+            title.setFont(new Font("Segoe UI", Font.BOLD, 26));
+            title.setForeground(new Color(15, 23, 42));
 
-            title.setFont(
-                    new Font(
-                            "Segoe UI",
-                            Font.BOLD,
-                            24
-                    )
-            );
-
-            JLabel count =
-                    new JLabel(
-                            "Total Students : "
-                                    + model.getRowCount()
-                    );
-
-            count.setFont(
-                    new Font(
-                            "Segoe UI",
-                            Font.BOLD,
-                            16
-                    )
-            );
+            JLabel count = new JLabel("Total Students : " + model.getRowCount());
+            count.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            count.setForeground(new Color(100, 116, 139));
 
             topPanel.add(title, BorderLayout.WEST);
             topPanel.add(count, BorderLayout.EAST);
+            JScrollPane pane = new JScrollPane(table);
+            pane.setBorder(BorderFactory.createEmptyBorder());
+            pane.getViewport().setBackground(Color.WHITE);
 
-            JScrollPane pane =
-                    new JScrollPane(table);
-
-            frame.setLayout(
-                    new BorderLayout(10,10)
-            );
+            frame.setBackground(new Color(241, 245, 249));
+            frame.setLayout(new BorderLayout(10, 10));
 
             frame.add(topPanel, BorderLayout.NORTH);
             frame.add(pane, BorderLayout.CENTER);
             frame.add(searchField, BorderLayout.SOUTH);
-
             frame.setVisible(true);
         });
         // ================= CENTER =================
@@ -522,6 +522,7 @@ public class AdminDashboard extends JFrame {
                         "Recent Activities"
                 )
         );
+
 
         center.add(cardsPanel, BorderLayout.NORTH);
         center.add(scrollPane, BorderLayout.CENTER);
@@ -863,17 +864,20 @@ public class AdminDashboard extends JFrame {
         frame.setSize(1250, 780);
         frame.setLocationRelativeTo(null);
         frame.setLayout(new BorderLayout());
-        frame.getContentPane().setBackground(new Color(8, 10, 20));
-
+        frame.getContentPane().setBackground(new Color(241, 245, 249));
         // ================= HEADER (GLASS STYLE) =================
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(12, 16, 32));
-        header.setBorder(BorderFactory.createEmptyBorder(25, 30, 15, 30));
-
+        header.setBackground(new Color(255, 255, 255));
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(25, 30, 15, 30)
+        ));        header.setBorder(BorderFactory.createEmptyBorder(25, 30, 15, 30));
         JLabel title = new JLabel("🏢 Recruiters Control Center");
-        title.setForeground(Color.WHITE);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 32));
-
+        title.setForeground(new Color(15, 23, 42));
+        JLabel subtitle = new JLabel("Manage recruiters, monitor activity & track engagement");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        subtitle.setForeground(new Color(100, 116, 139));
+        header.add(subtitle, BorderLayout.SOUTH);
         header.add(title, BorderLayout.WEST);
 
         // ================= MODEL =================
@@ -914,8 +918,8 @@ public class AdminDashboard extends JFrame {
 
         // ================= KPI SECTION =================
         JPanel kpi = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 10));
-        kpi.setBackground(new Color(12, 16, 32));
-
+        kpi.setBackground(new Color(241, 245, 249));
+        kpi.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         kpi.add(createMiniCard("TOTAL", String.valueOf(total), new Color(99,102,241)));
         kpi.add(createMiniCard("ONLINE", String.valueOf(onlineCount), new Color(34,197,94)));
         kpi.add(createMiniCard("OFFLINE", String.valueOf(total - onlineCount), new Color(239,68,68)));
@@ -930,14 +934,23 @@ public class AdminDashboard extends JFrame {
                 Component c = super.prepareRenderer(r, row, col);
 
                 if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0
-                            ? new Color(17, 22, 40)
-                            : new Color(20, 26, 48));
+
+                    if (row % 2 == 0) {
+                        c.setBackground(Color.WHITE);
+                    } else {
+                        c.setBackground(new Color(248, 250, 252)); // ultra soft gray-blue
+                    }
+
                 } else {
-                    c.setBackground(new Color(59, 130, 246));
+                    c.setBackground(new Color(219, 234, 254)); // selection glow
                 }
 
-                c.setForeground(Color.WHITE);
+                c.setForeground(new Color(15, 23, 42));
+
+                if (c instanceof JComponent jc) {
+                    jc.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+                }
+
                 return c;
             }
         };
@@ -948,8 +961,9 @@ public class AdminDashboard extends JFrame {
         table.setIntercellSpacing(new Dimension(0, 0));
 
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        table.getTableHeader().setBackground(new Color(12, 16, 32));
-        table.getTableHeader().setForeground(new Color(148, 163, 184));
+        table.getTableHeader().setBackground(new Color(15, 23, 42));
+        table.getTableHeader().setForeground(new Color(226, 232, 240));
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
 
         table.setSelectionBackground(new Color(59, 130, 246));
         table.setSelectionForeground(Color.WHITE);
@@ -976,8 +990,14 @@ public class AdminDashboard extends JFrame {
         JTextField search = new JTextField();
         search.setPreferredSize(new Dimension(380, 40));
         search.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        search.setBackground(new Color(17, 22, 40));
-        search.setForeground(Color.WHITE);
+        search.setBackground(Color.WHITE);
+        search.setForeground(new Color(15, 23, 42));
+        search.setCaretColor(new Color(59, 130, 246));
+
+        search.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226, 232, 240)),
+                BorderFactory.createEmptyBorder(10, 14, 10, 14)
+        ));
         search.setCaretColor(Color.WHITE);
         search.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
@@ -991,18 +1011,18 @@ public class AdminDashboard extends JFrame {
         });
 
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        searchPanel.setBackground(new Color(8, 10, 20));
+        searchPanel.setBackground(new Color(241, 245, 249));
         searchPanel.add(search);
 
         // ================= TABLE WRAPPER (CARD EFFECT) =================
         JPanel tableWrapper = new JPanel(new BorderLayout());
-        tableWrapper.setBackground(new Color(12, 16, 32));
         tableWrapper.setBorder(BorderFactory.createEmptyBorder(20, 30, 30, 30));
-
+        tableWrapper.setBackground(new Color(241, 245, 249));
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getViewport().setBackground(new Color(12, 16, 32));
-
+        JViewport viewport = scroll.getViewport();
+        viewport.setOpaque(true);
+        viewport.setBackground(Color.WHITE);
         tableWrapper.add(searchPanel, BorderLayout.NORTH);
         tableWrapper.add(scroll, BorderLayout.CENTER);
 
