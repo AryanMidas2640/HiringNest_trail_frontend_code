@@ -7,9 +7,10 @@ import java.net.URL;
 //import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
+import java.util.Scanner;
 
 
-    public class ApiService {
+public class ApiService {
 
         private static final String BASE_URL = "https://personalpro-2bb3.onrender.com";
         private static final String second_URL= "http://localhost:9090";        // ======================================
@@ -484,7 +485,7 @@ import java.nio.file.Files;
     // ======================================
     // COMMON GET METHOD
     // ======================================
-    private static String getRequest(String urlPath) {
+    public static String getRequest(String urlPath) {
 
         System.out.println("URL = " + urlPath);
         System.out.println("TOKEN SENT = " + Session.token);
@@ -601,5 +602,97 @@ import java.nio.file.Files;
             );
         }
         //System.out.println("TOKEN = " + Session.token);
+
+    public static String getNotifications() {
+
+        return getRequest(
+                second_URL + "/api/admin/notifications"
+        );
+    }
+
+    public static String getAllApplications() {
+
+        try {
+            URL url = new URL(second_URL + "/api/jobs/my-applicants");
+
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            // 🔥 ADD TOKEN (THIS IS MISSING)
+            conn.setRequestProperty("Authorization", "Bearer " + Session.token);
+
+            conn.setRequestProperty("Content-Type", "application/json");
+
+            int code = conn.getResponseCode();
+            System.out.println("APPLICATION API CODE = " + code);
+
+            InputStream stream = (code >= 200 && code < 300)
+                    ? conn.getInputStream()
+                    : conn.getErrorStream();
+
+            if (stream == null) return "ERROR";
+
+            Scanner sc = new Scanner(stream);
+            StringBuilder response = new StringBuilder();
+
+            while (sc.hasNext()) {
+                response.append(sc.nextLine());
+            }
+
+            sc.close();
+
+            return response.toString();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "ERROR";
+        }
+    }
+    public static String changePassword(
+            String username,
+            String currentPassword,
+            String newPassword) {
+
+        try {
+
+            URL url = new URL(
+                    second_URL + "/api/admin/change-password"
+            );
+
+            HttpURLConnection con =
+                    (HttpURLConnection) url.openConnection();
+
+            con.setRequestMethod("PUT");
+            con.setDoOutput(true);
+
+            con.setRequestProperty(
+                    "Content-Type",
+                    "application/json"
+            );
+
+            con.setRequestProperty(
+                    "Authorization",
+                    "Bearer " + Session.token
+            );
+
+            String json =
+                    "{"
+                            + "\"username\":\"" + username + "\","
+                            + "\"currentPassword\":\"" + currentPassword + "\","
+                            + "\"newPassword\":\"" + newPassword + "\""
+                            + "}";
+
+            OutputStream os = con.getOutputStream();
+            os.write(json.getBytes());
+            os.flush();
+            os.close();
+
+            return readResponse(con);
+
+        } catch(Exception e){
+            e.printStackTrace();
+            return "ERROR";
+        }
+    }
 
 }

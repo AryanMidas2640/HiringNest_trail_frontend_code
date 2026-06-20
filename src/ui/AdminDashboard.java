@@ -1,3 +1,6 @@
+
+
+
 package ui;
 
 import service.ApiService;
@@ -13,6 +16,9 @@ import java.awt.event.*;
 //import org.json.JSONObject;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
+
+import static service.ApiService.getRequest;
+//import static service.ApiService.second_URL;
 
 public class AdminDashboard extends JFrame {
 
@@ -77,6 +83,10 @@ public class AdminDashboard extends JFrame {
         JButton jobsBtn = createSidebarButton("Jobs", "jobs");
 
         JButton applicationsBtn = createSidebarButton("Applications", "applications");
+        applicationsBtn.addActionListener(e -> {
+            System.out.println("Applications clicked");
+            openApplications();
+        });
 
         JButton reportsBtn = createSidebarButton("Reports", "reports");
 
@@ -87,6 +97,18 @@ public class AdminDashboard extends JFrame {
         JButton logoutBtn = createSidebarButton("Logout", "logouts");
 
         recruitersBtn.addActionListener(e -> openRecruiters());
+
+        notificationBtn.addActionListener(e -> {
+            openNotifications();
+        });
+
+        reportsBtn.addActionListener(e -> openReports());
+
+        settingsBtn.addActionListener(e -> openSettings());
+
+
+
+
 
         sidebar.add(dashboardBtn);
         sidebar.add(studentsBtn);
@@ -1057,6 +1079,931 @@ public class AdminDashboard extends JFrame {
         card.add(v, BorderLayout.CENTER);
 
         return card;
+    }
+
+
+    private void openApplications() {
+
+        String response = ApiService.getAllApplications();
+
+        JFrame frame = new JFrame("Applications Control Center");
+        frame.setSize(1300, 800);
+        frame.setLocationRelativeTo(null);
+        frame.setLayout(new BorderLayout());
+        frame.getContentPane().setBackground(new Color(248, 250, 252));
+
+        // ================= HEADER =================
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(Color.WHITE);
+        header.setBorder(BorderFactory.createEmptyBorder(22, 35, 15, 35));
+
+        JLabel title = new JLabel("📄 Applications Control Center");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        title.setForeground(new Color(15, 23, 42));
+
+        header.add(title, BorderLayout.WEST);
+
+        // ================= MODEL =================
+        String[] columns = {
+                "Student",
+                "Email",
+                "Job Title",
+                "Company",
+                "Status",
+                "Resume"
+        };
+
+        DefaultTableModel model = new DefaultTableModel(columns, 0);
+
+        int total = 0;
+
+        try {
+            if (response != null && !response.isEmpty()) {
+
+                response = response.trim();
+                if (response.startsWith("[")) response = response.substring(1);
+                if (response.endsWith("]")) response = response.substring(0, response.length() - 1);
+
+                String[] items = response.split("\\},\\s*\\{");
+
+                for (String item : items) {
+
+                    item = item.replace("{", "").replace("}", "");
+
+                    String student = getValue(item, "studentName");
+                    String email = getValue(item, "studentUsername");
+                    String jobTitle = getValue(item, "jobTitle");
+                    String company = getValue(item, "companyName");
+                    String status = getValue(item, "status");
+                    String resume = getValue(item, "resumeName");
+
+                    model.addRow(new Object[]{
+                            student, email, jobTitle, company, status, resume
+                    });
+
+                    total++;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // ================= KPI =================
+        JPanel kpi = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 10));
+        kpi.setBackground(new Color(248, 250, 252));
+
+        kpi.add(createMiniCard("Total Applications", String.valueOf(total), new Color(59,130,246)));
+        kpi.add(createMiniCard("Applied", String.valueOf(total), new Color(245,158,11)));
+        kpi.add(createMiniCard("Shortlisted", "0", new Color(34,197,94)));
+
+        header.add(kpi, BorderLayout.SOUTH);
+
+        // ================= TABLE =================
+        JTable table = new JTable(model) {
+
+            public Component prepareRenderer(javax.swing.table.TableCellRenderer r, int row, int col) {
+
+                Component c = super.prepareRenderer(r, row, col);
+
+                if (!isRowSelected(row)) {
+                    c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 250, 252));
+                } else {
+                    c.setBackground(new Color(219, 234, 254));
+                }
+
+                c.setForeground(new Color(15, 23, 42));
+
+                return c;
+            }
+        };
+
+        table.setRowHeight(50);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        table.setShowGrid(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
+
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        table.getTableHeader().setBackground(new Color(15, 23, 42));
+        table.getTableHeader().setForeground(Color.WHITE);
+
+        table.setSelectionBackground(new Color(191, 219, 254));
+        table.setSelectionForeground(new Color(15, 23, 42));
+
+        table.setAutoCreateRowSorter(true);
+
+        // ================= SEARCH =================
+        JTextField search = new JTextField();
+        search.setPreferredSize(new Dimension(420, 42));
+        search.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        search.setBackground(Color.WHITE);
+        search.setForeground(new Color(15, 23, 42));
+        search.setCaretColor(new Color(59,130,246));
+        search.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(226,232,240)),
+                BorderFactory.createEmptyBorder(10, 14, 10, 14)
+        ));
+
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        table.setRowSorter(sorter);
+
+        search.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + search.getText()));
+            }
+        });
+
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        searchPanel.setBackground(new Color(248, 250, 252));
+        searchPanel.add(search);
+
+        // ================= WRAPPER =================
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(new Color(248, 250, 252));
+        wrapper.setBorder(BorderFactory.createEmptyBorder(20, 35, 30, 35));
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(226,232,240)));
+        scroll.getViewport().setBackground(Color.WHITE);
+
+        wrapper.add(searchPanel, BorderLayout.NORTH);
+        wrapper.add(scroll, BorderLayout.CENTER);
+
+        frame.add(header, BorderLayout.NORTH);
+        frame.add(wrapper, BorderLayout.CENTER);
+
+        frame.setVisible(true);
+    }
+
+    private void openNotifications() {
+
+        String response =
+                ApiService.getNotifications();
+
+        JFrame frame =
+                new JFrame(
+                        "Notification Center"
+                );
+
+        frame.setSize(950,700);
+        frame.setLocationRelativeTo(null);
+
+        frame.getContentPane()
+                .setBackground(
+                        new Color(245,247,250)
+                );
+
+        frame.setLayout(
+                new BorderLayout()
+        );
+
+        // ================= HEADER =================
+
+        JPanel header =
+                new JPanel(
+                        new BorderLayout()
+                );
+
+        header.setBackground(Color.WHITE);
+
+        header.setBorder(
+                BorderFactory.createEmptyBorder(
+                        20,25,20,25
+                )
+        );
+
+        JLabel title =
+                new JLabel(
+                        "🔔 Notification Center"
+                );
+
+        title.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.BOLD,
+                        28
+                )
+        );
+
+        JLabel subtitle =
+                new JLabel(
+                        "Real-time activity across platform"
+                );
+
+        subtitle.setForeground(Color.GRAY);
+
+        JPanel left =
+                new JPanel();
+
+        left.setOpaque(false);
+
+        left.setLayout(
+                new BoxLayout(
+                        left,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        left.add(title);
+        left.add(subtitle);
+
+        header.add(left);
+
+        // ================= BODY =================
+
+        JPanel body =
+                new JPanel();
+
+        body.setBackground(
+                new Color(245,247,250)
+        );
+
+        body.setLayout(
+                new BoxLayout(
+                        body,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        try {
+
+            response = response.trim();
+
+            if(response.startsWith("["))
+                response =
+                        response.substring(1);
+
+            if(response.endsWith("]"))
+                response =
+                        response.substring(
+                                0,
+                                response.length()-1
+                        );
+
+            String[] items =
+                    response.split(
+                            "\\},\\s*\\{"
+                    );
+
+            for(String item : items){
+
+                item = item.replace("{","");
+                item = item.replace("}","");
+
+                String type =
+                        getValue(
+                                item,
+                                "type"
+                        );
+
+                String message =
+                        getValue(
+                                item,
+                                "message"
+                        );
+
+                String time =
+                        getValue(
+                                item,
+                                "createdAt"
+                        );
+
+                JPanel card;
+
+                if("APPLICATION".equalsIgnoreCase(type)){
+
+                    card =
+                            createNotificationCard(
+                                    "🎓",
+                                    "New Application",
+                                    message,
+                                    time,
+                                    new Color(
+                                            34,
+                                            197,
+                                            94
+                                    )
+                            );
+
+                } else {
+
+                    card =
+                            createNotificationCard(
+                                    "💼",
+                                    "New Job Posted",
+                                    message,
+                                    time,
+                                    new Color(
+                                            59,
+                                            130,
+                                            246
+                                    )
+                            );
+                }
+
+                body.add(card);
+                body.add(
+                        Box.createVerticalStrut(12)
+                );
+            }
+
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+
+        JScrollPane scroll =
+                new JScrollPane(body);
+
+        scroll.setBorder(null);
+
+        frame.add(
+                header,
+                BorderLayout.NORTH
+        );
+
+        frame.add(
+                scroll,
+                BorderLayout.CENTER
+        );
+
+        frame.setVisible(true);
+    }
+    private JPanel createNotificationCard(
+            String icon,
+            String title,
+            String message,
+            String time,
+            Color color) {
+
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(Color.WHITE);
+
+        card.setMaximumSize(
+                new Dimension(Integer.MAX_VALUE, 100)
+        );
+
+        card.setBorder(
+                BorderFactory.createCompoundBorder(
+                        new LineBorder(
+                                new Color(230,230,230),
+                                1,
+                                true
+                        ),
+                        new EmptyBorder(
+                                15,20,15,20
+                        )
+                )
+        );
+
+        JLabel iconLabel =
+                new JLabel(icon);
+
+        iconLabel.setFont(
+                new Font(
+                        "Segoe UI Emoji",
+                        Font.PLAIN,
+                        26
+                )
+        );
+
+        JPanel content =
+                new JPanel();
+
+        content.setOpaque(false);
+
+        content.setLayout(
+                new BoxLayout(
+                        content,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        JLabel heading =
+                new JLabel(title);
+
+        heading.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.BOLD,
+                        15
+                )
+        );
+
+        heading.setForeground(color);
+
+        JLabel msg =
+                new JLabel(message);
+
+        msg.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.PLAIN,
+                        13
+                )
+        );
+
+        JLabel date =
+                new JLabel(time);
+
+        date.setForeground(
+                new Color(120,120,120)
+        );
+
+        date.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.PLAIN,
+                        11
+                )
+        );
+
+        content.add(heading);
+        content.add(Box.createVerticalStrut(4));
+        content.add(msg);
+        content.add(Box.createVerticalStrut(6));
+        content.add(date);
+
+        card.add(iconLabel, BorderLayout.WEST);
+        card.add(content, BorderLayout.CENTER);
+
+        return card;
+    }
+
+    private JPanel createReportHeader() {
+
+        JPanel p = new JPanel(new BorderLayout());
+
+        p.setBackground(Color.WHITE);
+
+        p.setBorder(
+                BorderFactory.createEmptyBorder(
+                        20,30,20,30
+                )
+        );
+
+        JLabel title =
+                new JLabel("📊 Reports & Analytics");
+
+        title.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.BOLD,
+                        28
+                )
+        );
+
+        p.add(title);
+
+        return p;
+    }
+    private JPanel createStatsSection() {
+
+        JPanel panel =
+                new JPanel(
+                        new GridLayout(1,4,20,0)
+                );
+
+        panel.setBackground(
+                new Color(245,247,250)
+        );
+
+        panel.setBorder(
+                BorderFactory.createEmptyBorder(
+                        20,20,20,20
+                )
+        );
+
+        panel.add(createReportCard(
+                "Students",
+                ApiService.getStudentCount()
+        ));
+
+        panel.add(createReportCard(
+                "Recruiters",
+                ApiService.getRecruiterCount()
+        ));
+
+        panel.add(createReportCard(
+                "Jobs",
+                ApiService.getJobCount()
+        ));
+
+        panel.add(createReportCard(
+                "Applications",
+                ApiService.getApplicationCount()
+        ));
+
+        return panel;
+    }
+
+    private JPanel createReportCard(
+            String title,
+            String value
+    ) {
+
+        JPanel card = new JPanel();
+
+        card.setLayout(
+                new BoxLayout(
+                        card,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        card.setBackground(Color.WHITE);
+
+        card.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(
+                                new Color(230,230,230)
+                        ),
+                        BorderFactory.createEmptyBorder(
+                                20,20,20,20
+                        )
+                )
+        );
+
+        JLabel t =
+                new JLabel(title);
+
+        JLabel v =
+                new JLabel(value);
+
+        t.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.PLAIN,
+                        15
+                )
+        );
+
+        v.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.BOLD,
+                        32
+                )
+        );
+
+        card.add(t);
+        card.add(Box.createVerticalStrut(10));
+        card.add(v);
+
+        return card;
+    }
+
+    private JPanel createCompanySection() {
+
+        JPanel panel = new JPanel(new BorderLayout());
+
+        panel.setBackground(Color.WHITE);
+
+        panel.setBorder(
+                BorderFactory.createTitledBorder(
+                        "Top Hiring Companies"
+                )
+        );
+
+        JTextArea area =
+                new JTextArea(
+                        """
+                        Infosys - 22 Jobs
+                        TCS - 17 Jobs
+                        Wipro - 14 Jobs
+                        Accenture - 11 Jobs
+                        Cognizant - 9 Jobs
+                        """
+                );
+
+        area.setEditable(false);
+
+        panel.add(area);
+
+        return panel;
+    }
+
+    private JPanel createCitySection() {
+
+        JPanel panel =
+                new JPanel(new BorderLayout());
+
+        panel.setBackground(Color.WHITE);
+
+        panel.setBorder(
+                BorderFactory.createTitledBorder(
+                        "City Wise Jobs"
+                )
+        );
+
+        JTextArea area =
+                new JTextArea(
+                        """
+                        Bangalore - 55
+                        Hyderabad - 43
+                        Pune - 31
+                        Delhi - 26
+                        Mumbai - 20
+                        """
+                );
+
+        area.setEditable(false);
+
+        panel.add(area);
+
+        return panel;
+    }private JPanel createActivitySection() {
+
+        JPanel panel =
+                new JPanel(new BorderLayout());
+
+        panel.setBackground(Color.WHITE);
+
+        String[] cols = {
+                "Activity",
+                "Time"
+        };
+
+        Object[][] data = {
+                {
+                        "New Job Added",
+                        "2 mins ago"
+                },
+                {
+                        "Candidate Applied",
+                        "5 mins ago"
+                },
+                {
+                        "Recruiter Registered",
+                        "12 mins ago"
+                }
+        };
+
+        JTable table =
+                new JTable(data,cols);
+
+        panel.add(
+                new JScrollPane(table)
+        );
+
+        return panel;
+    }
+
+
+
+    private void openReports() {
+
+        JFrame frame = new JFrame("Reports & Analytics");
+
+        frame.setSize(1300,800);
+        frame.setLocationRelativeTo(null);
+
+        frame.getContentPane().setBackground(
+                new Color(245,247,250)
+        );
+
+        frame.setLayout(new BorderLayout());
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content,BoxLayout.Y_AXIS));
+        content.setBackground(new Color(245,247,250));
+
+        content.add(createReportHeader());
+        content.add(createStatsSection());
+        content.add(createCompanySection());
+        content.add(createCitySection());
+        content.add(createActivitySection());
+
+        JScrollPane scroll =
+                new JScrollPane(content);
+
+        scroll.setBorder(null);
+
+        frame.add(scroll);
+
+        frame.setVisible(true);
+    }
+    private void openSettings() {
+
+        JFrame frame = new JFrame("Settings Center");
+
+        frame.setSize(1200, 700);
+        frame.setLocationRelativeTo(null);
+
+        JPanel main = new JPanel(
+                new GridLayout(2,2,20,20)
+        );
+
+        main.setBorder(
+                new EmptyBorder(20,20,20,20)
+        );
+
+        // 4 cards
+        main.add(createSettingsCard("👤 Admin Profile"));
+        main.add(createSettingsCard("🔐 Security"));
+        main.add(createSettingsCard("🔔 Notifications"));
+        main.add(createSettingsCard("📊 Dashboard"));
+
+        frame.add(main);
+
+        frame.setVisible(true);
+    }
+
+    private JPanel createSettingsCard(String title) {
+
+        JPanel card = new JPanel(new BorderLayout());
+
+        card.setBackground(Color.WHITE);
+
+        card.setBorder(
+                BorderFactory.createCompoundBorder(
+                        new LineBorder(new Color(230,230,230)),
+                        new EmptyBorder(20,20,20,20)
+                )
+        );
+
+        JLabel lbl = new JLabel(title);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 22));
+
+        JButton manageBtn = new JButton("Manage");
+
+        manageBtn.setBackground(new Color(59,130,246));
+        manageBtn.setForeground(Color.WHITE);
+        manageBtn.setFocusPainted(false);
+
+        // ================= ACTIONS =================
+
+        if(title.contains("Profile")){
+
+            manageBtn.addActionListener(e ->
+                    openAdminProfile()
+            );
+        }
+
+        else if(title.contains("Security")){
+
+            manageBtn.addActionListener(e ->
+                    openSecuritySettings()
+            );
+        }
+
+        else if(title.contains("Notification")){
+
+            manageBtn.addActionListener(e ->
+                    openNotificationSettings()
+            );
+        }
+
+        else if(title.contains("Dashboard")){
+
+            manageBtn.addActionListener(e ->
+                    openDashboardPreferences()
+            );
+        }
+
+        card.add(lbl, BorderLayout.NORTH);
+        card.add(manageBtn, BorderLayout.SOUTH);
+
+        return card;
+    }
+    private void openAdminProfile(){
+
+        JFrame f = new JFrame("Admin Profile");
+
+        f.setSize(500,400);
+        f.setLocationRelativeTo(null);
+
+        JPanel panel = new JPanel(new GridLayout(5,2,10,10));
+
+        JTextField name =
+                new JTextField("Admin");
+
+        JTextField email =
+                new JTextField("admin@gmail.com");
+
+        JButton save =
+                new JButton("Save");
+
+        panel.add(new JLabel("Name"));
+        panel.add(name);
+
+        panel.add(new JLabel("Email"));
+        panel.add(email);
+
+        panel.add(new JLabel(""));
+        panel.add(save);
+
+        f.add(panel);
+
+        f.setVisible(true);
+    }
+    private void openSecuritySettings() {
+
+        JTextField usernameField = new JTextField();
+        JPasswordField oldPass = new JPasswordField();
+        JPasswordField newPass = new JPasswordField();
+
+        Object[] fields = {
+                "Username:", usernameField,
+                "Current Password:", oldPass,
+                "New Password:", newPass
+        };
+
+        int option = JOptionPane.showConfirmDialog(
+                null,
+                fields,
+                "Change Password",
+                JOptionPane.OK_CANCEL_OPTION
+        );
+
+        if(option == JOptionPane.OK_OPTION){
+
+            String username = usernameField.getText();
+
+            String currentPassword =
+                    new String(oldPass.getPassword());
+
+            String newPassword =
+                    new String(newPass.getPassword());
+
+            String response =
+                    ApiService.changePassword(
+                            username,
+                            currentPassword,
+                            newPassword
+                    );
+
+            System.out.println(response);
+
+            JOptionPane.showMessageDialog(
+                    null,
+                    response
+            );
+        }
+    }
+    private void openNotificationSettings(){
+
+        JFrame f = new JFrame("Notifications");
+
+        f.setSize(500,350);
+
+        f.setLocationRelativeTo(null);
+
+        JPanel panel = new JPanel(
+                new GridLayout(4,1)
+        );
+
+        JCheckBox email =
+                new JCheckBox("Email Notifications",true);
+
+        JCheckBox jobs =
+                new JCheckBox("Job Posted Alerts",true);
+
+        JCheckBox applications =
+                new JCheckBox("Application Alerts",true);
+
+        JButton save =
+                new JButton("Save");
+
+        panel.add(email);
+        panel.add(jobs);
+        panel.add(applications);
+        panel.add(save);
+
+        f.add(panel);
+
+        f.setVisible(true);
+    }
+    private void openDashboardPreferences(){
+
+        JFrame f =
+                new JFrame("Dashboard Preferences");
+
+        f.setSize(500,350);
+
+        f.setLocationRelativeTo(null);
+
+        JPanel panel =
+                new JPanel(new GridLayout(4,1));
+
+        JCheckBox stats =
+                new JCheckBox("Show Statistics",true);
+
+        JCheckBox recruiters =
+                new JCheckBox("Show Recruiters",true);
+
+        JCheckBox students =
+                new JCheckBox("Show Students",true);
+
+        JButton save =
+                new JButton("Save");
+
+        panel.add(stats);
+        panel.add(recruiters);
+        panel.add(students);
+        panel.add(save);
+
+        f.add(panel);
+
+        f.setVisible(true);
     }
 
 
